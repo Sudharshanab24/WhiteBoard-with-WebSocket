@@ -1,18 +1,16 @@
 const canvas = document.getElementById("canvas");
-
 canvas.width = 0.92 * window.innerWidth;  // Adjust for toolbar width
 canvas.height = window.innerHeight;
 
-// var io=io.connect('http://localhost:8000')
-
+var io = io.connect('http://localhost:8000');
 const ctx = canvas.getContext("2d");
 
 let mouseDown = false;
-let currentTool = "pen"; // Default to pen
-let currentColor = "black"; // Default pen color
-let x, y;
+let currentTool = "pen"; // Default tool
+let currentColor = "black"; // Default color
+let prevX, prevY;  // Variables to store previous coordinates
 
-// Set initial line properties for drawing
+// Set initial line properties
 ctx.lineWidth = 5;
 ctx.lineCap = "round";  // Smooth line edges
 ctx.strokeStyle = currentColor;  // Default color
@@ -27,7 +25,7 @@ const colorOptions = document.querySelectorAll(".color-option");
 // Pen Button Click
 penButton.addEventListener("click", () => {
     currentTool = "pen";
-    ctx.strokeStyle = currentColor;  // Set to current color
+    ctx.strokeStyle = currentColor;  // Use selected color for pen
     ctx.lineWidth = 5;  // Pen stroke width
     penButton.classList.add("active");
     eraserButton.classList.remove("active");
@@ -36,7 +34,7 @@ penButton.addEventListener("click", () => {
 // Eraser Button Click
 eraserButton.addEventListener("click", () => {
     currentTool = "eraser";
-    ctx.strokeStyle = "white";  // White color for erasing
+    ctx.strokeStyle = "white";  // White for erasing
     ctx.lineWidth = 20;  // Wider stroke for erasing
     eraserButton.classList.add("active");
     penButton.classList.remove("active");
@@ -48,39 +46,68 @@ colorOptions.forEach(option => {
         currentColor = e.target.getAttribute("data-color");
 
         if (currentTool === "pen") {
-            ctx.strokeStyle = currentColor;  // Set selected color if in pen mode
+            ctx.strokeStyle = currentColor;  // Set selected color
         }
 
-        // Remove active class from other colors
+        // Update the color selection UI
         colorOptions.forEach(opt => opt.style.border = '2px solid white');
-        // Add active class to the clicked color
         e.target.style.border = '2px solid black';
     });
 });
 
-// Mouse down event
+// Mouse Down Event
 canvas.onmousedown = (e) => {
     mouseDown = true;
-    ctx.beginPath();
-    x = e.clientX - canvas.offsetLeft;
-    y = e.clientY - canvas.offsetTop;
-    ctx.moveTo(x, y);
-}
+    prevX = e.clientX - canvas.offsetLeft;
+    prevY = e.clientY - canvas.offsetTop;
+    ctx.beginPath();  // Start a new drawing path
+    ctx.moveTo(prevX, prevY);
+};
 
-// Mouse up event
+// Mouse Up Event
 canvas.onmouseup = () => {
     mouseDown = false;
-}
+};
 
-// Mouse move event
+// Mouse Move Event - Drawing
 canvas.onmousemove = (e) => {
     if (!mouseDown) return;
 
-    x = e.clientX - canvas.offsetLeft;
-    y = e.clientY - canvas.offsetTop;
+    let currentX = e.clientX - canvas.offsetLeft;
+    let currentY = e.clientY - canvas.offsetTop;
 
-    if (currentTool === "pen" || currentTool === "eraser") {
-        ctx.lineTo(x, y);
-        ctx.stroke();
+    ctx.lineTo(currentX, currentY);
+    ctx.stroke();
+
+    // Emit the drawing data to the server
+    io.emit('drawing', {
+        prevX: prevX,
+        prevY: prevY,
+        currentX: currentX,
+        currentY: currentY,
+        color: ctx.strokeStyle,
+        lineWidth: ctx.lineWidth,
+        tool: currentTool
+    });
+
+    // Update previous coordinates
+    prevX = currentX;
+    prevY = currentY;
+};
+
+// Listen for drawing events from server
+io.on('drawing', (data) => {
+    ctx.beginPath();
+    ctx.moveTo(data.prevX, data.prevY);
+
+    // Set the received drawing properties
+    ctx.strokeStyle = data.color;
+    ctx.lineWidth = data.lineWidth;
+
+    if (data.tool === "eraser") {
+        ctx.strokeStyle = "white";  // Eraser uses white color
     }
-}
+
+    ctx.lineTo(data.currentX, data.currentY);
+    ctx.stroke();
+});
