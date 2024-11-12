@@ -2,8 +2,13 @@ const express=require('express');
 const app=express();
 const httpserver=require('http').createServer(app);
 const io=require('socket.io')(httpserver);
+const cors = require('cors');
 
 const connections=[]
+
+app.use(cors({
+    origin: '*', // Allow all origins (use cautiously for production)
+}));
 
 io.on("connect", (socket) => {
     connections.push(socket);
@@ -18,7 +23,6 @@ io.on("connect", (socket) => {
     //     connections = connections.filter((con) => con.id !== socket.id);
     // });
 });
-
 
 app.use(express.static('public'));
 
