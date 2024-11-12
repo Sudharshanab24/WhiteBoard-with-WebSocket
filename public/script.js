@@ -2,7 +2,7 @@ const canvas = document.getElementById("canvas");
 canvas.width = 0.92 * window.innerWidth;  // Adjust for toolbar width
 canvas.height = window.innerHeight;
 
-var io = io.connect('http://localhost:8000');
+var io = io.connect('https://whiteboard-with-websocket-2.onrender.com/');
 const ctx = canvas.getContext("2d");
 
 let mouseDown = false;
